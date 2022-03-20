@@ -7,13 +7,13 @@
 		{
 			"label": "git_push",
 			"type": "shell",
-			"command": "git add . && git commit -m \"${input:commitmess}\" && git push origin \"${input:branch}\"",
+			"command": "git add . && git commit -m \"${input:commitmess}\" && git push origin ${input:branch}",
 			"problemMatcher": []
 		},
 		{
 			"label": "git_pull",
 			"type": "shell",
-			"command": "git pull holyhack ${input:branch}",
+			"command": "git pull origin ${input:branch}",
 			"problemMatcher": []
 		},
 		{
