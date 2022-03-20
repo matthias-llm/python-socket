@@ -10,8 +10,17 @@
 			"request": "launch",
 			"program": "${file}",
 			"console": "integratedTerminal",
-			"args": ["GET", "www.linux-ip.net", "80"],
+			"args": ["GET", "${input:website}", "80"],
 			"justMyCode": true
-		}
-	]
+		},
+	],
+
+	"inputs": [
+        {
+            "id": "website",
+            "description": "Param1:",
+            "default": "www.google.com",
+            "type": "promptString"
+        }
+    ],
 }
