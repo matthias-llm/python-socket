@@ -104,12 +104,12 @@ class ClientSocket:
 		if transfer_format != -1:
 			return -1
 		elif content_length != -1:
-			s = ""
+			length = ""
 			while header[content_length + len(substr_cl)] != "\r":
-				s += header[content_length + len(substr_cl)]
+				length += header[content_length + len(substr_cl)]
 				content_length += 1
 
-			return int(s)
+			return int(length)
 
 	def retrieve_embedded_images(self):
 		pass
