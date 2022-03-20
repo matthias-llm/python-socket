@@ -7,7 +7,7 @@
 		{
 			"label": "git_push",
 			"type": "shell",
-			"command": "git add . && git commit -m \"${input:commitmess}\" && git push holyhack \"${input:branch}\"",
+			"command": "git add . && git commit -m \"${input:commitmess}\" && git push master \"${input:branch}\"",
 			"problemMatcher": []
 		},
 		{
