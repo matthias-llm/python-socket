@@ -28,7 +28,7 @@ class ClientSocket:
 		try:
 			self.ip = socket.gethostbyname(self.uri)
 			self.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)	#	AF_INET = ipv4; SOCK_STREAM = TCP
-			self.soc.setblocking(0)		#	Voor select() later, select.select([socket], [], [], 5); imort select
+			# self.soc.setblocking(0)		#	Voor select() later, select.select([socket], [], [], 5); imort select
 			self.soc.settimeout(5)		#	Eerst dit testen 
 		except socket.error as e:
 			print(e)
@@ -137,16 +137,23 @@ class ClientSocket:
 
 			if buffer[:len(self.stop)] == self.stop:
 				buffer = buffer[len(self.stop):]
-				
+
 			return int(buffer[:-len(self.stop)], base=16)
 
 		size = get_chunksize()
 		while size != 0:
-			self.response += self.soc.recv(size).decode(encoding=self.charset)
+			buffer = ""
+
+			while len(buffer) < size:
+				size_counter = size - len(buffer)
+				buffer += self.soc.recv(size_counter).decode(encoding=self.charset)
+
+			self.response += buffer
 			size = get_chunksize()
 
 	def get_whole(self, chunk):
-		self.response += self.soc.recv(chunk).decode(encoding=self.charset)
+		while len(self.response) < chunk:
+			self.response += self.soc.recv(chunk).decode(encoding=self.charset)
 
 	def get(self, command):
 		self.request = command + " / HTTP/1.1\r\nHost: " + self.uri + "\r\n\r\n"
@@ -179,11 +186,12 @@ class ClientSocket:
 		self.request = command + " " + path + " / HTTP/1.1\r\nHost: " + self.uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n"
 		self.soc.send(self.request.encode())
 
-	def write_output(self):
+	def write_output(self, name):
 		if self.filetype == "plain":
 			self.filetype = "txt"
-
-		fout = open("output." + self.filetype, "w")
+			
+		print(name + "." + self.filetype)
+		fout = open(name + "." + self.filetype, "w")
 
 		fout.write(self.response)
 		fout.close()
@@ -194,9 +202,9 @@ class ClientSocket:
 		self.connect_socket()
 
 		self.req(self.command)
-		self.write_output()
+		self.write_output(uri)
 
 		self.close_connection()
 
 
-client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
+# client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
