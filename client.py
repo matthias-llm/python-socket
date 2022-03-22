@@ -1,4 +1,5 @@
 from ast import Str
+from fileinput import filename
 import sys, socket
 
 class ClientSocket:
@@ -112,7 +113,62 @@ class ClientSocket:
 			return int(length)
 
 	def retrieve_embedded_images(self):
-		pass
+		substr = ["content=\"/", "src=\"/"]
+		counter = 0
+
+		for s in substr:
+			index = 0
+
+			while self.response[index:].find(s) != -1:
+				index = self.response.find(s) + len(s) - 1
+
+				url = ""
+
+				while self.response[index] != "\"":
+					url += self.response[index]
+					index += 1
+
+				header = self.get_file("GET", url)
+				size = self.check_page_length(header)
+				filetype_1, filetype_2 = self.check_file_type(header)
+				image = self.get_image(size)
+
+				filename = "png_" + str(counter) + "." + filetype_2
+				fout = open(filename, "wb")
+				fout.write(image)
+				fout.close()
+
+				self.replace_in_html(filename, index)
+
+				counter += 1
+	
+	def replace_in_html(self, filename, index):
+		def einde_org_filepath():
+			return self.response[index:].find("\"")
+
+		print(self.response[index-5:index+50])
+		self.response = self.response[:index] + filename + self.response[einde_org_filepath():]
+
+	def get_image(self, size):
+		image = b""
+
+		if size == -1:
+			self.get_chunked()
+		else:
+			while len(image) < size:
+				image += self.soc.recv(size)
+
+		return image
+
+	def get_file(self, command, url):
+		self.request = command + " " + url + " HTTP/1.1\r\nHost: " + self.uri + "\r\n\r\n"
+		self.soc.send(self.request.encode())
+
+		buffer = ""
+		while self.end_of_header not in buffer:
+			buffer += self.soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
+
+		return buffer
 
 	def get_header(self):
 		buffer = self.soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
@@ -141,6 +197,7 @@ class ClientSocket:
 			return int(buffer[:-len(self.stop)], base=16)
 
 		size = get_chunksize()
+
 		while size != 0:
 			buffer = ""
 
@@ -207,4 +264,4 @@ class ClientSocket:
 		self.close_connection()
 
 
-# client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
+client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
