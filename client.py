@@ -1,11 +1,13 @@
 from ast import Str
 from fileinput import filename
-import sys, socket
+import sys, socket, bs4
 
 class ClientSocket:
 	BUFFERSIZE = 1
 	end_of_header = "\r\n\r\n"
 	stop = "\r\n"
+
+	file_extensions = [".jpg", ".png", ".js", ".css", ".gif"]
 
 	command = ""
 	uri = ""
@@ -20,19 +22,20 @@ class ClientSocket:
 	charset = "ISO-8859-1"
 	filetype = ""
 
-	def input_commands(self, command, uri, port):
+	def input_commands(self, command, port):
 		self.command = command
-		self.uri = uri
 		self.port = int(port)
 
-	def create_socket(self):
+	def create_socket(self, uri=uri):
 		try:
-			self.ip = socket.gethostbyname(self.uri)
-			self.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)	#	AF_INET = ipv4; SOCK_STREAM = TCP
+			ip = socket.gethostbyname(uri)
+			soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)	#	AF_INET = ipv4; SOCK_STREAM = TCP
 			# self.soc.setblocking(0)		#	Voor select() later, select.select([socket], [], [], 5); imort select
-			self.soc.settimeout(5)		#	Eerst dit testen 
+			soc.settimeout(5)
 		except socket.error as e:
 			print(e)
+
+		return ip, soc
 
 	def connect_socket(self):
 		try:
@@ -40,9 +43,9 @@ class ClientSocket:
 		except socket.error as e:
 			print(e)
 
-	def close_connection(self):
-		self.soc.shutdown(socket.SHUT_RDWR)
-		self.soc.close()
+	def close_connection(self, soc):
+		soc.shutdown(socket.SHUT_RDWR)
+		soc.close()
 
 	def req(self, command):
 		length = 30
@@ -112,41 +115,76 @@ class ClientSocket:
 
 			return int(length)
 
-	def retrieve_embedded_images(self):
-		substr = ["content=\"/", "src=\"/"]
+	def retrieve_embedded_files(self):
+		def make_uri(url):
+			u = ""
+			index = 0
+
+			while url[index] != "/":
+				u += url[index]
+				index += 1
+			
+			return u, index
+
+		def make_path(url):
+			u = ""
+			index = 0
+
+			while url[index] != "/":
+				u += url[index]
+				index += 1
+			
+			return u
+
+		charset = ["\"", "\'", "(", "="]
 		counter = 0
 
-		for s in substr:
+		for s in self.file_extensions:
 			index = 0
 
 			while self.response[index:].find(s) != -1:
+				org_index = self.response.find(s) + len(s) - 1
 				index = self.response.find(s) + len(s) - 1
 
 				url = ""
 
-				while self.response[index] != "\"":
-					url += self.response[index]
-					index += 1
+				while self.response[index] not in charset:
+					url = self.response[index] + url
+					index -= 1
 
-				header = self.get_file("GET", url)
+				print(url)
+
+				header = ""
+				if url[:2] == "//":
+					site, i = make_uri(url[2:])
+
+					ip, soc = self.create_socket(site)
+					soc.connect(ip)
+
+					header = self.get_file("GET", make_path(site[i:]), site, soc)
+				else:
+					header = self.get_file("GET", url, self.uri, self.soc)
+
 				size = self.check_page_length(header)
 				filetype_1, filetype_2 = self.check_file_type(header)
 				image = self.get_image(size)
 
-				filename = "png_" + str(counter) + "." + filetype_2
+				if url[:2] == "//":
+					self.close_connection(soc)
+
+				filename = self.uri + "_" + filetype_1 + "_" + str(counter) + "." + filetype_2
 				fout = open(filename, "wb")
 				fout.write(image)
 				fout.close()
 
-				self.replace_in_html(filename, index)
+				self.replace_in_html(filename, org_index)
 
 				counter += 1
 	
 	def replace_in_html(self, filename, index):
 		def einde_org_filepath():
-			return self.response[index:].find("\"")
+			return self.response[index:].find("\"") + index
 
-		print(self.response[index-5:index+50])
 		self.response = self.response[:index] + filename + self.response[einde_org_filepath():]
 
 	def get_image(self, size):
@@ -160,13 +198,13 @@ class ClientSocket:
 
 		return image
 
-	def get_file(self, command, url):
-		self.request = command + " " + url + " HTTP/1.1\r\nHost: " + self.uri + "\r\n\r\n"
-		self.soc.send(self.request.encode())
+	def get_file(self, command, url, uri=uri, soc=soc):
+		self.request = command + " /" + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
+		soc.send(self.request.encode())
 
 		buffer = ""
 		while self.end_of_header not in buffer:
-			buffer += self.soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
+			buffer += soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
 
 		return buffer
 
@@ -227,7 +265,7 @@ class ClientSocket:
 		else:
 			self.get_whole(chunk)
 
-		self.retrieve_embedded_images()
+		self.retrieve_embedded_files()
 
 	def head(self, command):
 		self.request = command + " / HTTP/1.1\r\nHost: " + self.uri + "\r\n\r\n"
@@ -254,14 +292,15 @@ class ClientSocket:
 		fout.close()
 
 	def __init__(self, command, uri, port):
-		self.input_commands(command, uri, port)
-		self.create_socket()
+		self.input_commands(command, port)
+		self.uri = uri
+		self.ip, self.soc = self.create_socket(self.uri)
 		self.connect_socket()
 
 		self.req(self.command)
 		self.write_output(uri)
 
-		self.close_connection()
+		self.close_connection(self.soc)
 
 
 client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
