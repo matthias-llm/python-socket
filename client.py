@@ -2,6 +2,8 @@ import sys, socket, bs4, re
 from embedded_objects import Embedded_Objects
 
 class ClientSocket:
+	embedded_obj = Embedded_Objects()
+
 	BUFFERSIZE = 1
 	end_of_header = "\r\n\r\n"
 	stop = "\r\n"
@@ -80,64 +82,6 @@ class ClientSocket:
 			self.charset = d
 
 	"""
-		Checks filetypes for filenameing purposes and file extensions.
-	"""
-	def check_file_type(self, header):
-		substr = "Content-Type: "
-		pos = header.find(substr)
-
-		file_type_1 = ""
-		file_type_2 = ""
-		while header[pos + len(substr)] != ";":
-			if header[pos + len(substr)] == "\r":
-				break 
-			
-			if len(file_type_1) != 0:
-				if file_type_1[-1] != "/":
-					file_type_1 += header[pos + len(substr)]
-				else:
-					file_type_2 += header[pos + len(substr)]
-			else:
-				file_type_1 += header[pos + len(substr)]
-
-			pos += 1
-
-		if file_type_2 == "javascript":
-			file_type_2 = "js"
-
-		return file_type_1[:-1], file_type_2
-
-	"""
-		Finds Content-length if not transferred in chuncks, returns -1 if chunked.
-	"""
-	def check_page_length(self, header):
-		substr_cl = "Content-Length: "
-		substr_te = "Transfer-Encoding: chunked"
-
-		content_length = header.find(substr_cl)
-		transfer_format = header.find(substr_te)
-		
-		if transfer_format != -1:
-			return -1
-		elif content_length != -1:
-			length = ""
-			while header[content_length + len(substr_cl)] != "\r":
-				length += header[content_length + len(substr_cl)]
-				content_length += 1
-
-			return int(length)
-
-	def get_file(self, command, url, uri=uri, soc=soc):
-		self.request = command + " /" + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
-		soc.send(self.request.encode())
-
-		buffer = ""
-		while self.end_of_header not in buffer:
-			buffer += soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
-
-		return buffer
-
-	"""
 		Receive each byte seperately (self.BUFFERSIZE) until self.end_of_header is found in buffer.
 	"""
 	def get_header(self):
@@ -191,15 +135,15 @@ class ClientSocket:
 		
 		header = self.get_header()
 		self.check_charset(header)
-		chunk = self.check_page_length(header)
-		filetype_1, self.filetype = self.check_file_type(header)
+		chunk = self.embedded_obj.check_page_length(header)
+		filetype_1, self.filetype = self.embedded_obj.check_file_type(header)
 
 		if chunk == -1:
 			self.get_chunked()
 		else:
 			self.get_whole(chunk)
 
-		Embedded_Objects(self.response)
+		self.embedded_obj.retrieve_embedded_objects(self.response, self.soc, self.uri)
 
 	def head(self, command):
 		self.request = command + " / HTTP/1.1\r\nHost: " + self.uri + "\r\n\r\n"
