@@ -1,6 +1,6 @@
 from ast import Str
 from fileinput import filename
-import sys, socket, bs4
+import sys, socket, bs4, re
 
 class ClientSocket:
 	BUFFERSIZE = 1
@@ -8,6 +8,7 @@ class ClientSocket:
 	stop = "\r\n"
 
 	file_extensions = [".jpg", ".png", ".js", ".css", ".gif"]
+	end_chars = ["\"", "\'", "(", "="]
 
 	command = ""
 	uri = ""
@@ -59,6 +60,10 @@ class ClientSocket:
 		elif command == "PUT":
 			self.put(command, input() , length)
 
+	"""
+		Checks the charset in the header and sets the correct global charset.
+		Standard charset is ISO-8859-1, decodes same as UTF-8 for unicode chars.
+	"""
 	def check_charset(self, header):
 		substr = "charset="
 		pos = header.find(substr)
@@ -76,6 +81,9 @@ class ClientSocket:
 
 			self.charset = d
 
+	"""
+		Checks filetypes for filenameing purposes and file extensions.
+	"""
 	def check_file_type(self, header):
 		substr = "Content-Type: "
 		pos = header.find(substr)
@@ -101,6 +109,9 @@ class ClientSocket:
 
 		return file_type_1[:-1], file_type_2
 
+	"""
+		Finds Content-length if not transferred in chuncks, returns -1 if chunked.
+	"""
 	def check_page_length(self, header):
 		substr_cl = "Content-Length: "
 		substr_te = "Transfer-Encoding: chunked"
@@ -129,60 +140,98 @@ class ClientSocket:
 			
 			return u, index
 
-		charset = ["\"", "\'", "(", "="]
+		soup = bs4.BeautifulSoup(self.response, 'html.parser')
+		i = 0
+		results = []
+		for s in self.file_extensions:
+			results.append(soup.find_all(string=re.compile(s), recursive=True))
+			i += 1
+
 		counter = 0
+		image = b""
+		working_response = self.response
 
 		for s in self.file_extensions:
 			index = 0
 
-			while self.response[index:].find(s) != -1:
-				org_index = self.response.find(s) + len(s) - 1
-				index = self.response.find(s) + len(s) - 1
+			while working_response[index:].find(s) != -1:
+				org_index = working_response[index:].find(s) + len(s) - 1
+				index = org_index
 
-				url = ""
+				if not ((ord(self.response[index+1]) >= 65 and  ord(self.response[index+1]) <= 90) or (ord(self.response[index+1]) >= 97 and  ord(self.response[index+1]) <= 122)):
+					url = ""
 
-				while self.response[index] not in charset:
-					url = self.response[index] + url
-					index -= 1
+					while self.response[index] not in self.end_chars:
+						url = self.response[index] + url
+						index -= 1
 
-				print(url)
+					header = ""
+					if url[:2] == "//":
+						site, i = make_uri(url[2:])
 
-				header = ""
-				if url[:2] == "//":
-					site, i = make_uri(url[2:])
+						ip, soc = self.create_socket(site)
+						soc.connect((ip, self.port))
 
-					ip, soc = self.create_socket(site)
-					soc.connect((ip, self.port))
+						header = self.get_file("GET", url[2+i:], site, soc)
 
-					header = self.get_file("GET", url[2+i:], site, soc)
+						size = self.check_page_length(header)
+						filetype_1, filetype_2 = self.check_file_type(header)
+						image = self.get_image(size, soc)
+					elif url[:8] == "https://":
+						site, i = make_uri(url[8:])
 
-					size = self.check_page_length(header)
-					filetype_1, filetype_2 = self.check_file_type(header)
-					image = self.get_image(size, soc)
-				else:
-					header = self.get_file("GET", url, self.uri, self.soc)
+						ip, soc = self.create_socket(site)
+						soc.connect((ip, self.port))
 
-					size = self.check_page_length(header)
-					filetype_1, filetype_2 = self.check_file_type(header)
-					image = self.get_image(size, self.soc)
+						header = self.get_file("GET", url[2+i:], site, soc)
 
-				if url[:2] == "//":
-					self.close_connection(soc)
+						size = self.check_page_length(header)
+						filetype_1, filetype_2 = self.check_file_type(header)
+						image = self.get_image(size, soc)
+					else:
+						header = self.get_file("GET", url, self.uri, self.soc)
 
-				filename = self.uri + "_" + filetype_1 + "_" + str(counter) + "." + filetype_2
-				fout = open(filename, "wb")
-				fout.write(image)
-				fout.close()
+						size = self.check_page_length(header)
+						filetype_1, filetype_2 = self.check_file_type(header)
+						image = self.get_image(size, self.soc)
 
-				self.replace_in_html(filename, org_index)
+					if url[:2] == "//":
+						self.close_connection(soc)
+					if url[:8] == "http://":
+						self.close_connection(soc)
 
-				counter += 1
+					filename = self.uri + "_" + filetype_1 + "_" + str(counter) + "." + filetype_2
+					fout = open(filename, "wb")
+					fout.write(image)
+					fout.close()
+
+					working_response, start = self.replace_in_html(filename, org_index)
+
+					index = start + len(filename)
+
+					counter += 1
 	
 	def replace_in_html(self, filename, index):
-		def einde_org_filepath():
-			return self.response[index:].find("\"") + index
+		def start_org_filepath():
+			i = 0
 
-		self.response = self.response[:index] + filename + self.response[einde_org_filepath():]
+			while self.response[index-i] not in self.end_chars:
+				i += 1
+				
+			return index - i
+
+		start = start_org_filepath()
+		filename_x = ""
+		for i in filename:
+			filename_x += "x"
+
+		sta_string = self.response[:start+1]
+		end_string = self.response[index+1:]
+
+		self.response = sta_string + filename + end_string
+		working_response = sta_string + filename_x + end_string
+
+		return working_response, start
 
 	def get_image(self, size, socket):
 		image = b""
