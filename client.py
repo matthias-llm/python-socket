@@ -96,6 +96,9 @@ class ClientSocket:
 
 			pos += 1
 
+		if file_type_2 == "javascript":
+			file_type_2 = "js"
+
 		return file_type_1[:-1], file_type_2
 
 	def check_page_length(self, header):
@@ -126,16 +129,6 @@ class ClientSocket:
 			
 			return u, index
 
-		def make_path(url):
-			u = ""
-			index = 0
-
-			while url[index] != "/":
-				u += url[index]
-				index += 1
-			
-			return u
-
 		charset = ["\"", "\'", "(", "="]
 		counter = 0
 
@@ -159,15 +152,19 @@ class ClientSocket:
 					site, i = make_uri(url[2:])
 
 					ip, soc = self.create_socket(site)
-					soc.connect(ip)
+					soc.connect((ip, self.port))
 
-					header = self.get_file("GET", make_path(site[i:]), site, soc)
+					header = self.get_file("GET", url[2+i:], site, soc)
+
+					size = self.check_page_length(header)
+					filetype_1, filetype_2 = self.check_file_type(header)
+					image = self.get_image(size, soc)
 				else:
 					header = self.get_file("GET", url, self.uri, self.soc)
 
-				size = self.check_page_length(header)
-				filetype_1, filetype_2 = self.check_file_type(header)
-				image = self.get_image(size)
+					size = self.check_page_length(header)
+					filetype_1, filetype_2 = self.check_file_type(header)
+					image = self.get_image(size, self.soc)
 
 				if url[:2] == "//":
 					self.close_connection(soc)
@@ -187,14 +184,14 @@ class ClientSocket:
 
 		self.response = self.response[:index] + filename + self.response[einde_org_filepath():]
 
-	def get_image(self, size):
+	def get_image(self, size, socket):
 		image = b""
 
 		if size == -1:
 			self.get_chunked()
 		else:
 			while len(image) < size:
-				image += self.soc.recv(size)
+				image += socket.recv(size)
 
 		return image
 
