@@ -207,7 +207,7 @@ class Embedded_Objects:
 		# 	filename_x += "x"
 
 		sta_string = response[:start + 1]
-		end_string = `response[index + len(filename) + 1:]
+		end_string = response[index + len(filename) + 1:]
 
 		response = sta_string + filename + end_string
 		# working_response = sta_string + filename_x + end_string
