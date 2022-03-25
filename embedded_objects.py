@@ -20,11 +20,11 @@ class Embedded_Objects:
 	
 		return u, index
 
-	def __close_connection(self, soc):
+	def _close_connection(self, soc):
 		soc.shutdown(socket.SHUT_RDWR)
 		soc.close()
 
-	def __get_header(self, command, url, uri, soc):
+	def _get_header(self, command, url, uri, soc):
 		request = command + " /" + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
 		soc.send(request.encode())
 
@@ -82,7 +82,7 @@ class Embedded_Objects:
 
 			return int(length)
 
-	def __has_object(self, extension):
+	def _has_object(self, extension):
 		global extension_length, reconstructed_response
 
 		return reconstructed_response[-extension_length:] == extension
@@ -97,7 +97,7 @@ class Embedded_Objects:
 
 				extension_length = len(extension)
 
-				if self.__has_object(extension):
+				if self._has_object(extension):
 					while response[index] not in self.end_chars:
 						url = response[index] + url
 						index -= 1
@@ -105,11 +105,11 @@ class Embedded_Objects:
 					filename = ""
 					
 					if url[:len("https://")] == "https://":
-						filename = self.__get_object_external(counter, url, uri)
+						filename = self._get_object_external(counter, url, uri)
 					elif url[:len("//")] == "//":
-						filename = self.__get_object_external(counter, url, uri)
+						filename = self._get_object_external(counter, url, uri)
 					else:
-						filename = self.__get_object_normal(counter, url, uri, soc)
+						filename = self._get_object_normal(counter, url, uri, soc)
 
 					self.replace_in_html(response, filename, url)
 
@@ -118,8 +118,8 @@ class Embedded_Objects:
 	"""
 		Retrieve header and body and write file to disk.
 	"""
-	def __get_object_normal(self, counter, url, uri, soc) -> str:
-		header = self.__get_header("GET", url, uri, soc)
+	def _get_object_normal(self, counter, url, uri, soc) -> str:
+		header = self._get_header("GET", url, uri, soc)
 		size = self.check_page_length(header)
 		filetype_1, filetype_2 = self.check_file_type(header)
 		obj = self.get_object(size, soc)		
@@ -134,7 +134,7 @@ class Embedded_Objects:
 	"""
 		Retrieve header and body and write file to disk.
 	"""
-	def __get_object_external(self, counter, url, uri) -> str:
+	def _get_object_external(self, counter, url, uri) -> str:
 		site, i = self.make_uri(url[2:])
 
 		ip, soc = self.create_socket(site)
@@ -146,7 +146,7 @@ class Embedded_Objects:
 		filetype_1, filetype_2 = self.check_file_type(header)
 		obj = self.get_object(size, soc)
 
-		self.__close_connection(soc)
+		self._close_connection(soc)
 
 		return obj
 
@@ -167,5 +167,5 @@ class Embedded_Objects:
 	def replace_in_html(self, response, filename, url) -> str:
 		return response.replace(url, filename)
 
-	def __init__(self):
+	def _init_(self):
 		pass
