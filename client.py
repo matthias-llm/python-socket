@@ -1,8 +1,8 @@
 import sys, socket, bs4, re
-from embedded_objects import Embedded_Objects
+from embedded_objects import EmbeddedObjects
 
 class ClientSocket:
-	embedded_obj = Embedded_Objects()
+	embedded_obj = EmbeddedObjects()
 
 	BUFFERSIZE = 1
 	end_of_header = "\r\n\r\n"
@@ -135,15 +135,15 @@ class ClientSocket:
 		
 		header = self._get_header()
 		self._check_charset(header)
-		chunk = self.embedded_obj.check_page_length(header)
-		filetype_1, self.filetype = self.embedded_obj.check_file_type(header)
+		chunk = self.embedded_obj._check_page_length(header)
+		filetype_1, self.filetype = self.embedded_obj._check_file_type(header)
 
 		if chunk == -1:
 			self._get_chunked()
 		else:
 			self._get_whole(chunk)
 
-		self.embedded_obj.retrieve_embedded_objects(self.response, self.soc, self.uri)
+		self.response = self.embedded_obj.retrieve_embedded_objects(self.response, self.soc, self.uri)
 
 	def head(self, command):
 		self.request = command + " / HTTP/1.1\r\nHost: " + self.uri + "\r\n\r\n"

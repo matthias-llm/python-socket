@@ -1,6 +1,7 @@
 import socket
+from typing import Tuple
 
-class Embedded_Objects:
+class EmbeddedObjects:
 	file_extensions = [".jpg", ".png", ".js", ".css", ".gif"]
 	end_chars = ["\"", "\'", "(", "="]
 
@@ -8,9 +9,11 @@ class Embedded_Objects:
 	BUFFERSIZE = 1
 	charset = "ISO-8859-1"
 
+	port = 80
+
 	response = ""
 
-	def make_uri(self, url):
+	def make_uri(self, url:str):
 		u = ""
 		index = 0
 
@@ -20,11 +23,21 @@ class Embedded_Objects:
 	
 		return u, index
 
-	def _close_connection(self, soc):
+	def _create_socket(self, uri:str) -> Tuple[str, socket.SocketKind]:
+		try:
+			ip = socket.gethostbyname(uri)
+			soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			soc.settimeout(5)
+		except socket.error as e:
+			print(e)
+
+		return ip, soc
+
+	def _close_connection(self, soc:socket.SocketKind):
 		soc.shutdown(socket.SHUT_RDWR)
 		soc.close()
 
-	def _get_header(self, command, url, uri, soc):
+	def _get_header(self, command:str, url:str, uri:str, soc:socket.SocketKind) -> str:
 		request = command + " /" + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
 		soc.send(request.encode())
 
@@ -39,7 +52,7 @@ class Embedded_Objects:
 		";" and "\r" can both be a terminating substring in the header.
 		filetype is of form "abcd/abcd" with right what type of file it is.
 	"""
-	def check_file_type(self, header):
+	def _check_file_type(self, header:str) -> Tuple[str,str]:
 		substr = "Content-Type: "
 		pos = header.find(substr)
 
@@ -65,7 +78,7 @@ class Embedded_Objects:
 		Finds Content-length if not transferred in chuncks, returns -1 if chunked.
 		"\r" signals a line-end.
 	"""
-	def check_page_length(self, header):
+	def _check_page_length(self, header:str) -> int:
 		substr_cl = "Content-Length: "
 		substr_te = "Transfer-Encoding: chunked"
 
@@ -82,18 +95,21 @@ class Embedded_Objects:
 
 			return int(length)
 
-	def _has_object(self, extension):
+	def _has_object(self, extension:str) -> bool:
 		global extension_length, reconstructed_response
 
 		return reconstructed_response[-extension_length:] == extension
 
-	def retrieve_embedded_objects(self, response, soc, uri):
+	def retrieve_embedded_objects(self, response:str, soc:socket.SocketKind, uri:str) -> str:
 		global extension_length, reconstructed_response
-		
+
 		counter = 0
-		url = ""
+		reconstructed_response = ""
 
 		for index in range(len(response)):
+			reconstructed_response += response[index]
+			url = ""
+			
 			for extension in self.file_extensions:
 				extension_length = len(extension)
 
@@ -105,25 +121,21 @@ class Embedded_Objects:
 					filename = ""
 					
 					if url[:len("https://")] == "https://":
-						filename = self._get_object_external(counter, url, uri)
+						filename = self._get_object_external(counter, url[len("https://"):], uri)
 					elif url[:len("//")] == "//":
-						filename = self._get_object_external(counter, url, uri)
+						filename = self._get_object_external(counter, url[len("//"):], uri)
 					else:
 						filename = self._get_object_normal(counter, url, uri, soc)
 
-					self.replace_in_html(response, filename, url)
+					reconstructed_response = self._replace_in_html(reconstructed_response, filename, url)
 
-					counter += 1	
+					counter += 1
 
-	"""
-		Retrieve header and body and write file to disk.
-	"""
-	def _get_object_normal(self, counter, url, uri, soc) -> str:
-		header = self._get_header("GET", url, uri, soc)
-		size = self.check_page_length(header)
-		filetype_1, filetype_2 = self.check_file_type(header)
-		obj = self.get_object(size, soc)		
+					break
 
+		return reconstructed_response
+
+	def _write_output(self, uri:str, filetype_1:str, filetype_2:str, obj:bytes, counter:str) -> str:
 		filename = uri + "_" + filetype_1 + "_" + str(counter) + "." + filetype_2
 		fout = open(filename, "wb")
 		fout.write(obj)
@@ -134,26 +146,36 @@ class Embedded_Objects:
 	"""
 		Retrieve header and body and write file to disk.
 	"""
-	def _get_object_external(self, counter, url, uri) -> str:
-		site, i = self.make_uri(url[2:])
+	def _get_object_normal(self, counter:str, url:str, uri:str, soc:socket.SocketKind) -> str:
+		header = self._get_header("GET", url, uri, soc)
+		size = self._check_page_length(header)
+		filetype_1, filetype_2 = self._check_file_type(header)
+		obj = self._get_object(size, soc)		
 
-		ip, soc = self.create_socket(site)
+		return self._write_output(uri, filetype_1, filetype_2, obj, counter)
+
+	"""
+		Retrieve header and body and write file to disk.
+	"""
+	def _get_object_external(self, counter:str, url:str, uri:str) -> str:
+		site, i = self.make_uri(url)
+
+		ip, soc = self._create_socket(site)
 		soc.connect((ip, self.port))
 
-		header = self.get_file("GET", url[2+i:], site, soc)
+		header = self._get_header("GET", url[i:], site, soc)
 
-		size = self.check_page_length(header)
-		filetype_1, filetype_2 = self.check_file_type(header)
-		obj = self.get_object(size, soc)
+		size = self._check_page_length(header)
+		filetype_1, filetype_2 = self._check_file_type(header)
+		obj = self._get_object(size, soc)
 
 		self._close_connection(soc)
-
-		return obj
+		return self._write_output(uri, filetype_1, filetype_2, obj, counter)
 
 	"""
 		Uses binary format for receiving and writing objects
 	"""
-	def get_object(self, size:int, socket:socket) -> str:
+	def _get_object(self, size:int, socket:socket.SocketKind) -> bytes:
 		obj = b""
 
 		if size == -1:
@@ -164,8 +186,8 @@ class Embedded_Objects:
 
 		return obj
 
-	def replace_in_html(self, response, filename, url) -> str:
+	def _replace_in_html(self, response:str, filename:str, url:str) -> str:
 		return response.replace(url, filename)
 
-	def _init_(self):
+	def __init__(self):
 		pass
