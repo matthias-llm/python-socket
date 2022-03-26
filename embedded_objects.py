@@ -3,15 +3,13 @@ from typing import Tuple
 
 class EmbeddedObjects:
 	file_extensions = [".jpg", ".png", ".js", ".css", ".gif"]
-	end_chars = ["\"", "\'", "(", "="]
-
+	end_chars = ["\"", "\'", "(", "=", ")"]
 	end_of_header = "\r\n\r\n"
 	BUFFERSIZE = 1
 	charset = "ISO-8859-1"
 
-	port = 80
-
-	response = ""
+	_port = 80
+	_response = ""
 
 	def make_uri(self, url:str):
 		u = ""
@@ -95,10 +93,14 @@ class EmbeddedObjects:
 
 			return int(length)
 
-	def _has_object(self, extension:str) -> bool:
+	def _has_object(self, extension:str, response:str, index:int) -> bool:
 		global extension_length, reconstructed_response
 
-		return reconstructed_response[-extension_length:] == extension
+		if index + 1 < len(response):
+			if response[index + 1] in self.end_chars:
+				return reconstructed_response[-extension_length:] == extension
+
+		return False
 
 	def retrieve_embedded_objects(self, response:str, soc:socket.SocketKind, uri:str) -> str:
 		global extension_length, reconstructed_response
@@ -113,7 +115,7 @@ class EmbeddedObjects:
 			for extension in self.file_extensions:
 				extension_length = len(extension)
 
-				if self._has_object(extension):
+				if self._has_object(extension, response, index):
 					while response[index] not in self.end_chars:
 						url = response[index] + url
 						index -= 1
@@ -124,8 +126,10 @@ class EmbeddedObjects:
 						filename = self._get_object_external(counter, url[len("https://"):], uri)
 					elif url[:len("//")] == "//":
 						filename = self._get_object_external(counter, url[len("//"):], uri)
-					else:
+					elif url[0] == "/":
 						filename = self._get_object_normal(counter, url, uri, soc)
+					else:
+						break
 
 					reconstructed_response = self._replace_in_html(reconstructed_response, filename, url)
 
@@ -161,7 +165,7 @@ class EmbeddedObjects:
 		site, i = self.make_uri(url)
 
 		ip, soc = self._create_socket(site)
-		soc.connect((ip, self.port))
+		soc.connect((ip, self._port))
 
 		header = self._get_header("GET", url[i:], site, soc)
 

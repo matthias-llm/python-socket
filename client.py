@@ -2,36 +2,34 @@ import sys, socket, bs4, re
 from embedded_objects import EmbeddedObjects
 
 class ClientSocket:
-	embedded_obj = EmbeddedObjects()
+	_embedded_obj = EmbeddedObjects()
 
 	BUFFERSIZE = 1
 	end_of_header = "\r\n\r\n"
 	stop = "\r\n"
-
 	end_chars = ["\"", "\'", "(", "="]
 
-	command = ""
-	uri = ""
-	port = 0
+	_command = ""
+	_uri = ""
+	_port = 0
 
-	soc = 0
-	ip = ""
+	_soc = 0
+	_ip = ""
 
-	request = ""
-	response = ""
+	_request = ""
+	_response = ""
 
 	charset = "ISO-8859-1"
 	filetype = ""
 
 	def input_commands(self, command, port):
-		self.command = command
-		self.port = int(port)
+		self._command = command
+		self._port = int(port)
 
-	def create_socket(self, uri=uri):
+	def create_socket(self, uri=_uri):
 		try:
 			ip = socket.gethostbyname(uri)
 			soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)	#	AF_INET = ipv4; SOCK_STREAM = TCP
-			# self.soc.setblocking(0)		#	Voor select() later, select.select([socket], [], [], 5); imort select
 			soc.settimeout(5)
 		except socket.error as e:
 			print(e)
@@ -40,7 +38,7 @@ class ClientSocket:
 
 	def connect_socket(self):
 		try:
-			self.soc.connect((self.ip, self.port))
+			self._soc.connect((self._ip, self._port))
 		except socket.error as e:
 			print(e)
 
@@ -85,10 +83,10 @@ class ClientSocket:
 		Receive each byte seperately (self.BUFFERSIZE) until self.end_of_header is found in buffer.
 	"""
 	def _get_header(self):
-		buffer = self.soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
+		buffer = self._soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
 		
 		while self.end_of_header not in buffer:
-			buffer += self.soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
+			buffer += self._soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
 
 		return buffer
 
@@ -106,7 +104,7 @@ class ClientSocket:
 		def get_chunksize():
 			buffer = ""
 			while in_buffer(buffer):
-				buffer += self.soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
+				buffer += self._soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
 
 			if buffer[:len(self.stop)] == self.stop:
 				buffer = buffer[len(self.stop):]
@@ -120,44 +118,44 @@ class ClientSocket:
 
 			while len(buffer) < size:
 				size_counter = size - len(buffer)
-				buffer += self.soc.recv(size_counter).decode(encoding=self.charset)
+				buffer += self._soc.recv(size_counter).decode(encoding=self.charset)
 
-			self.response += buffer
+			self._response += buffer
 			size = get_chunksize()
 
 	def _get_whole(self, chunk):
-		while len(self.response) < chunk:
-			self.response += self.soc.recv(chunk).decode(encoding=self.charset)
+		while len(self._response) < chunk:
+			self._response += self._soc.recv(chunk).decode(encoding=self.charset)
 
 	def get(self, command):
-		self.request = command + " / HTTP/1.1\r\nHost: " + self.uri + "\r\n\r\n"
-		self.soc.send(self.request.encode())
+		self._request = command + " / HTTP/1.1\r\nHost: " + self._uri + "\r\n\r\n"
+		self._soc.send(self._request.encode())
 		
 		header = self._get_header()
 		self._check_charset(header)
-		chunk = self.embedded_obj._check_page_length(header)
-		filetype_1, self.filetype = self.embedded_obj._check_file_type(header)
+		chunk = self._embedded_obj._check_page_length(header)
+		filetype_1, self.filetype = self._embedded_obj._check_file_type(header)
 
 		if chunk == -1:
 			self._get_chunked()
 		else:
 			self._get_whole(chunk)
 
-		self.response = self.embedded_obj.retrieve_embedded_objects(self.response, self.soc, self.uri)
+		self._response = self._embedded_obj.retrieve_embedded_objects(self._response, self._soc, self._uri)
 
 	def head(self, command):
-		self.request = command + " / HTTP/1.1\r\nHost: " + self.uri + "\r\n\r\n"
-		self.soc.send(self.request.encode())
+		self._request = command + " / HTTP/1.1\r\nHost: " + self._uri + "\r\n\r\n"
+		self._soc.send(self._request.encode())
 
-		self.response = self._get_header()
+		self._response = self._get_header()
 
 	def post(self, command, path, length):
-		self.request = command + " " + path + " HTTP/1.1\r\nHost: " + self.uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n"
-		self.soc.send(self.request.encode())
+		self._request = command + " " + path + " HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n"
+		self._soc.send(self._request.encode())
 
 	def put(self, command, path, length):
-		self.request = command + " " + path + " / HTTP/1.1\r\nHost: " + self.uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n"
-		self.soc.send(self.request.encode())
+		self._request = command + " " + path + " / HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n"
+		self._soc.send(self._request.encode())
 
 	def write_output(self, name):
 		if self.filetype == "plain":
@@ -166,19 +164,19 @@ class ClientSocket:
 		print(name + "." + self.filetype)
 		fout = open(name + "." + self.filetype, "w")
 
-		fout.write(self.response)
+		fout.write(self._response)
 		fout.close()
 
 	def __init__(self, command, uri, port):
 		self.input_commands(command, port)
-		self.uri = uri
-		self.ip, self.soc = self.create_socket(self.uri)
+		self._uri = uri
+		self._ip, self._soc = self.create_socket(self._uri)
 		self.connect_socket()
 
-		self._req(self.command)
+		self._req(self._command)
 		self.write_output(uri)
 
-		self.close_connection(self.soc)
+		self.close_connection(self._soc)
 
 
 client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
