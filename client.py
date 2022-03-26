@@ -179,4 +179,4 @@ class ClientSocket:
 		self.close_connection(self._soc)
 
 
-client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
+# client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])

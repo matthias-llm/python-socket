@@ -5,6 +5,7 @@ class EmbeddedObjects:
 	file_extensions = [".jpg", ".png", ".js", ".css", ".gif"]
 	end_chars = ["\"", "\'", "(", "=", ")"]
 	end_of_header = "\r\n\r\n"
+	stop = "\r\n"
 	BUFFERSIZE = 1
 	charset = "ISO-8859-1"
 
@@ -126,6 +127,8 @@ class EmbeddedObjects:
 						filename = self._get_object_external(counter, url[len("https://"):], uri)
 					elif url[:len("//")] == "//":
 						filename = self._get_object_external(counter, url[len("//"):], uri)
+					elif url[:len("http://")] == "http://":
+						filename = self._get_object_external(counter, url[len("http://"):], uri)
 					elif url[0] == "/":
 						filename = self._get_object_normal(counter, url, uri, soc)
 					else:
@@ -179,14 +182,46 @@ class EmbeddedObjects:
 	"""
 		Uses binary format for receiving and writing objects
 	"""
-	def _get_object(self, size:int, socket:socket.SocketKind) -> bytes:
+	def _get_object(self, size:int, soc:socket.SocketKind) -> bytes:
 		obj = b""
 
 		if size == -1:
-			self.get_chunked()
+			obj = self._get_chunked(soc, obj)
 		else:
 			while len(obj) < size:
-				obj += socket.recv(size)
+				obj += soc.recv(size)
+
+		return obj
+
+	def _get_chunked(self, soc:socket.SocketKind, obj:bytes) -> bytes:
+		def in_buffer(buffer:str) -> bool:
+			if len(buffer) > len(self.stop):
+				if buffer[-len(self.stop):] == self.stop:
+					return False
+
+			return True
+
+		def get_chunksize() -> int:
+			buffer = ""
+			while in_buffer(buffer):
+				buffer += soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
+
+			if buffer[:len(self.stop)] == self.stop:
+				buffer = buffer[len(self.stop):]
+
+			return int(buffer[:-len(self.stop)], base=16)
+
+		size = get_chunksize()
+
+		while size != 0:
+			buffer = b""
+
+			while len(buffer) < size:
+				size_counter = size - len(buffer)
+				buffer += soc.recv(size_counter)
+
+			obj += buffer
+			size = get_chunksize()
 
 		return obj
 
