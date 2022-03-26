@@ -48,7 +48,7 @@ class ClientSocket:
 		soc.shutdown(socket.SHUT_RDWR)
 		soc.close()
 
-	def req(self, command):
+	def _req(self, command):
 		length = 30
 
 		if command == "HEAD":
@@ -64,7 +64,7 @@ class ClientSocket:
 		Checks the charset in the header and sets the correct global charset.
 		Standard charset is ISO-8859-1, decodes same as UTF-8 for unicode chars.
 	"""
-	def check_charset(self, header):
+	def _check_charset(self, header):
 		substr = "charset="
 		pos = header.find(substr)
 
@@ -84,7 +84,7 @@ class ClientSocket:
 	"""
 		Receive each byte seperately (self.BUFFERSIZE) until self.end_of_header is found in buffer.
 	"""
-	def get_header(self):
+	def _get_header(self):
 		buffer = self.soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
 		
 		while self.end_of_header not in buffer:
@@ -95,7 +95,7 @@ class ClientSocket:
 	"""
 	
 	"""
-	def get_chunked(self):
+	def _get_chunked(self):
 		def in_buffer(buffer):
 			if len(buffer) > len(self.stop):
 				if buffer[-len(self.stop):] == self.stop:
@@ -125,7 +125,7 @@ class ClientSocket:
 			self.response += buffer
 			size = get_chunksize()
 
-	def get_whole(self, chunk):
+	def _get_whole(self, chunk):
 		while len(self.response) < chunk:
 			self.response += self.soc.recv(chunk).decode(encoding=self.charset)
 
@@ -133,15 +133,15 @@ class ClientSocket:
 		self.request = command + " / HTTP/1.1\r\nHost: " + self.uri + "\r\n\r\n"
 		self.soc.send(self.request.encode())
 		
-		header = self.get_header()
-		self.check_charset(header)
+		header = self._get_header()
+		self._check_charset(header)
 		chunk = self.embedded_obj.check_page_length(header)
 		filetype_1, self.filetype = self.embedded_obj.check_file_type(header)
 
 		if chunk == -1:
-			self.get_chunked()
+			self._get_chunked()
 		else:
-			self.get_whole(chunk)
+			self._get_whole(chunk)
 
 		self.embedded_obj.retrieve_embedded_objects(self.response, self.soc, self.uri)
 
@@ -149,7 +149,7 @@ class ClientSocket:
 		self.request = command + " / HTTP/1.1\r\nHost: " + self.uri + "\r\n\r\n"
 		self.soc.send(self.request.encode())
 
-		self.response = self.get_header()
+		self.response = self._get_header()
 
 	def post(self, command, path, length):
 		self.request = command + " " + path + " HTTP/1.1\r\nHost: " + self.uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n"
@@ -175,7 +175,7 @@ class ClientSocket:
 		self.ip, self.soc = self.create_socket(self.uri)
 		self.connect_socket()
 
-		self.req(self.command)
+		self._req(self.command)
 		self.write_output(uri)
 
 		self.close_connection(self.soc)

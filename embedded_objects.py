@@ -88,13 +88,13 @@ class Embedded_Objects:
 		return reconstructed_response[-extension_length:] == extension
 
 	def retrieve_embedded_objects(self, response, soc, uri):
+		global extension_length, reconstructed_response
+		
 		counter = 0
 		url = ""
 
 		for index in range(len(response)):
 			for extension in self.file_extensions:
-				global extension_length, reconstructed_response
-
 				extension_length = len(extension)
 
 				if self._has_object(extension):

@@ -19,7 +19,7 @@
 		{
 			"label": "git_commit",
 			"type": "shell",
-			"command": "git add . && git commit -m \"${input:commitmess}\"",
+			"command": "git add . -and git commit -m \"${input:commitmess}\"",
 			"problemMatcher": []
 		},
 	],
