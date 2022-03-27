@@ -1,13 +1,9 @@
 import socket
 from typing import Tuple
+from util import Util
 
 class EmbeddedObjects:
-	file_extensions = [".jpg", ".png", ".js", ".css", ".gif"]
-	end_chars = ["\"", "\'", "(", "=", ")"]
-	end_of_header = "\r\n\r\n"
-	stop = "\r\n"
-	BUFFERSIZE = 1
-	charset = "ISO-8859-1"
+	_util = Util()
 
 	_port = 80
 	_response = ""
@@ -22,29 +18,9 @@ class EmbeddedObjects:
 	
 		return u, index
 
-	def _create_socket(self, uri:str) -> Tuple[str, socket.SocketKind]:
-		try:
-			ip = socket.gethostbyname(uri)
-			soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			soc.settimeout(5)
-		except socket.error as e:
-			print(e)
-
-		return ip, soc
-
 	def _close_connection(self, soc:socket.SocketKind):
 		soc.shutdown(socket.SHUT_RDWR)
 		soc.close()
-
-	def _get_header(self, command:str, url:str, uri:str, soc:socket.SocketKind) -> str:
-		request = command + " /" + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
-		soc.send(request.encode())
-
-		buffer = ""
-		while self.end_of_header not in buffer:
-			buffer += soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
-
-		return buffer
 
 	"""
 		Checks filetypes for filenameing purposes and file extensions.
@@ -98,7 +74,7 @@ class EmbeddedObjects:
 		global extension_length, reconstructed_response
 
 		if index + 1 < len(response):
-			if response[index + 1] in self.end_chars:
+			if response[index + 1] in self._util.end_chars:
 				return reconstructed_response[-extension_length:] == extension
 
 		return False
@@ -113,11 +89,11 @@ class EmbeddedObjects:
 			reconstructed_response += response[index]
 			url = ""
 			
-			for extension in self.file_extensions:
+			for extension in self._util.file_extensions:
 				extension_length = len(extension)
 
 				if self._has_object(extension, response, index):
-					while response[index] not in self.end_chars:
+					while response[index] not in self._util.end_chars:
 						url = response[index] + url
 						index -= 1
 
@@ -134,7 +110,7 @@ class EmbeddedObjects:
 					else:
 						break
 
-					reconstructed_response = self._replace_in_html(reconstructed_response, filename, url)
+					reconstructed_response = self._util.replace_in_html(reconstructed_response, filename, url)
 
 					counter += 1
 
@@ -142,24 +118,19 @@ class EmbeddedObjects:
 
 		return reconstructed_response
 
-	def _write_output(self, uri:str, filetype_1:str, filetype_2:str, obj:bytes, counter:str) -> str:
-		filename = uri + "_" + filetype_1 + "_" + str(counter) + "." + filetype_2
-		fout = open(filename, "wb")
-		fout.write(obj)
-		fout.close()
-
-		return filename
-
 	"""
 		Retrieve header and body and write file to disk.
 	"""
 	def _get_object_normal(self, counter:str, url:str, uri:str, soc:socket.SocketKind) -> str:
-		header = self._get_header("GET", url, uri, soc)
+		request = "GET" + " /" + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
+		soc.send(request.encode())
+
+		header = self._util.get_header(soc)
 		size = self._check_page_length(header)
 		filetype_1, filetype_2 = self._check_file_type(header)
 		obj = self._get_object(size, soc)		
 
-		return self._write_output(uri, filetype_1, filetype_2, obj, counter)
+		return self._util.write_output(uri, filetype_1, filetype_2, obj, counter)
 
 	"""
 		Retrieve header and body and write file to disk.
@@ -167,17 +138,20 @@ class EmbeddedObjects:
 	def _get_object_external(self, counter:str, url:str, uri:str) -> str:
 		site, i = self.make_uri(url)
 
-		ip, soc = self._create_socket(site)
-		soc.connect((ip, self._port))
+		ip, soc = self._util.create_socket(site)
+		self._util.connect_socket(soc, ip, self._port)
 
-		header = self._get_header("GET", url[i:], site, soc)
+		request = "GET" + " /" + url[i:] + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
+		soc.send(request.encode())
+
+		header = self._util.get_header(soc)
 
 		size = self._check_page_length(header)
 		filetype_1, filetype_2 = self._check_file_type(header)
 		obj = self._get_object(size, soc)
 
-		self._close_connection(soc)
-		return self._write_output(uri, filetype_1, filetype_2, obj, counter)
+		self._util.close_connection(soc)
+		return self._util.write_output(uri, filetype_1, filetype_2, obj, counter)
 
 	"""
 		Uses binary format for receiving and writing objects
@@ -224,9 +198,6 @@ class EmbeddedObjects:
 			size = get_chunksize()
 
 		return obj
-
-	def _replace_in_html(self, response:str, filename:str, url:str) -> str:
-		return response.replace(url, filename)
 
 	def __init__(self):
 		pass
