@@ -136,12 +136,15 @@ class EmbeddedObjects:
 		Retrieve header and body and write file to disk.
 	"""
 	def _get_object_external(self, counter:str, url:str, uri:str) -> str:
-		site, i = self.make_uri(url)
+		uri, i = self.make_uri(url)
 
-		ip, soc = self._util.create_socket(site)
+		ip, soc = self._util.create_socket(uri)
 		self._util.connect_socket(soc, ip, self._port)
 
-		request = "GET" + " /" + url[i:] + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
+		if url[i] == "/":
+			request = "GET " + url[i:] + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
+		else:
+			request = "GET" + " /" + url[i:] + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
 		soc.send(request.encode())
 
 		header = self._util.get_header(soc)
@@ -169,8 +172,8 @@ class EmbeddedObjects:
 
 	def _get_chunked(self, soc:socket.SocketKind, obj:bytes) -> bytes:
 		def in_buffer(buffer:str) -> bool:
-			if len(buffer) > len(self.stop):
-				if buffer[-len(self.stop):] == self.stop:
+			if len(buffer) > len(self._util.stop):
+				if buffer[-len(self._util.stop):] == self._util.stop:
 					return False
 
 			return True
@@ -178,12 +181,12 @@ class EmbeddedObjects:
 		def get_chunksize() -> int:
 			buffer = ""
 			while in_buffer(buffer):
-				buffer += soc.recv(self.BUFFERSIZE).decode(encoding=self.charset)
+				buffer += soc.recv(self._util.BUFFERSIZE).decode(encoding=self._util.charset)
 
-			if buffer[:len(self.stop)] == self.stop:
-				buffer = buffer[len(self.stop):]
+			if buffer[:len(self._util.stop)] == self._util.stop:
+				buffer = buffer[len(self._util.stop):]
 
-			return int(buffer[:-len(self.stop)], base=16)
+			return int(buffer[:-len(self._util.stop)], base=16)
 
 		size = get_chunksize()
 

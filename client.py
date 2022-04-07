@@ -117,4 +117,4 @@ class ClientSocket:
 
 
 #client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
-client = ClientSocket("GET", input(), "80")
+client = ClientSocket("GET", sys.argv[2], "80")

@@ -10,7 +10,7 @@ class Util:
 	file_extensions = [".jpg", ".png", ".js", ".css", ".gif"]
 	end_chars = ["\"", "\'", "(", "=", ")"]
 	
-	charset = "ISO-8859-1"
+	charset = "utf-8"
 	filetype = ""
 
 	def create_socket(self, uri:str) -> Tuple[str, socket.SocketKind]:
@@ -35,7 +35,7 @@ class Util:
 
 	"""
 		Checks the charset in the header and sets the correct global charset.
-		Standard charset is ISO-8859-1, decodes same as UTF-8 for unicode chars.
+		Standard charset is utf-8.
 	"""
 	def check_charset(self, header:str):
 		substr = "charset="
@@ -67,18 +67,22 @@ class Util:
 
 	def write_output(self, uri:str, filetype_1:str, filetype_2:str, obj:Union[bytes, str], counter:str="") -> str:
 		if filetype_2 == "plain":
-			filetype_2 = "txt"
+			self.filetype = "txt"
+		else:
+			self.filetype = filetype_2
 
 		filename = ""
 
 		if counter == "":
 			print(uri + "." + self.filetype)	#	debug
-			fout = open(uri + "." + self.filetype, "w")
+			fout = open(uri + "." + self.filetype, mode="wb")
+			fout.write(obj.encode(encoding=self.charset))
 		else:
 			filename = uri + "_" + filetype_1 + "_" + str(counter) + "." + filetype_2
-			fout = open(filename, "wb")
+			fout = open(filename, mode="wb")
+			fout.write(obj)
 		
-		fout.write(obj)
+		# fout.write(obj.encode(encoding=self.charset))
 		fout.close()
 
 		return filename
