@@ -81,8 +81,7 @@ class Util:
 			filename = uri + "_" + filetype_1 + "_" + str(counter) + "." + filetype_2
 			fout = open(filename, mode="wb")
 			fout.write(obj)
-		
-		# fout.write(obj.encode(encoding=self.charset))
+
 		fout.close()
 
 		return filename
