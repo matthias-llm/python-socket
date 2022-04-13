@@ -1,5 +1,52 @@
-class ServerSockets:
-	def __init__(self):
-		pass
+from builtins import print
+import socket
+import threading
 
-server = ServerSockets()
+IP = socket.gethostbyname(socket.gethostname())
+PORT = 5566 
+ADDR = (IP, PORT)
+SIZE = 4096
+FORMAT = "utf-8"
+DISCONNECT_MSG = "DISCONNECT!"
+
+def handle_client(conn, addr):
+	print(f"[NEW_CONNECTION] {addr} connected.")
+	connected = True
+	while connected:
+		msg = conn.recv(SIZE).decode(FORMAT).rstrip()
+		if msg == DISCONNECT_MSG:
+			connected = False
+		print(f"[{addr}] {msg}")
+		msg = f"msg received: {msg}"
+		conn.send(msg.encode(FORMAT))
+	conn.close()
+
+
+
+def main():
+	print(f"[STARTING] {IP, PORT}")
+	server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	server.bind(ADDR)
+	server.listen()
+	print(f"[LISTENING] ON {IP} : {PORT}")
+
+	while True:
+		conn, addr = server.accept()
+		thread = threading.Thread(target=handle_client, args=(conn, addr))
+		thread.start()
+		print(f"[ACTIVE_CONNECTIONS] {threading.active_count()-1}")
+
+
+
+
+
+if __name__ == "__main__":
+	main()
+
+
+
+# class ServerSockets:
+# 	def __init__(self):
+# 		pass
+
+# server = ServerSockets()
