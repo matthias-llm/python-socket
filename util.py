@@ -14,12 +14,18 @@ class Util:
 	filetype = ""
 
 	def create_socket(self, uri:str) -> Tuple[str, socket.SocketKind]:
-		try:
+		if uri[:3] == "www":
 			ip = socket.gethostbyname(uri)
-			soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)	#	AF_INET = ipv4; SOCK_STREAM = TCP
+		elif uri == "localhost":
+			ip = "127.0.1.1"
+		else:
+			ip = uri
+		
+		try:
+			soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			soc.settimeout(5)
 		except socket.error as e:
-			print(e)
+				print(e)
 
 		return ip, soc
 
