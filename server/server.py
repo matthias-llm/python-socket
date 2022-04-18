@@ -6,7 +6,7 @@ import socket
 import threading
 
 IP = socket.gethostbyname(socket.gethostname())
-PORT = 5594
+PORT = 5586
 ADDR = (IP, PORT)
 SIZE = 1
 FORMAT = "utf-8"
@@ -35,17 +35,13 @@ def handle_client(conn, addr):
     connected = True
     while connected:
         header = get_PART(conn, SIZE)
-        if DISCONNECT_MSG == header.rstrip():
-            connected = False
-        if connected:
-            parts = split_HEADER(header)
-            if check_HOST(parts, conn):
-                if parts[0] == "PUT" or parts[0] == "POST":
-                    length_next_chunk = int(parts[3]['Content length'])
-                    body = get_PART(conn, length_next_chunk)
-                    parts.append(body)
+        parts = split_HEADER(header, conn)
+        if check_HOST(parts, conn):
+            if parts[0] == "PUT" or parts[0] == "POST":
+                length_next_chunk = int(parts[3]['Content-Length'])
+                body = get_PART(conn, length_next_chunk)
+                parts.append(body)
             redirect_msg(parts, conn)
-
     conn.close()
     print(f"[ACTIVE_CONNECTIONS] {threading.active_count()-2}")
 
@@ -102,12 +98,50 @@ def handle_POST(parts, conn):
     return
 
 
-def handle_GET(parts, conn):
-    pass
+def handle_GET(parts, conn, head=False):
+    # eerst checken of uri al gekend is, anders 404, erna if modified since met terug files te checken
+    # als die twee in orde zijn moet ik nog aan die file zien te geraken
+    # https://nikhilroxtomar.medium.com/file-transfer-using-tcp-socket-in-python3-idiot-developer-c5cf3899819c
+    path = os.path.dirname(os.path.abspath(__file__))
+    dir_list = os.listdir(path)
+    # print(dir_list, ":DIRLIST", path, ":path", parts[1])
+    if parts[1][1:] not in dir_list:
+        status_line = "HTTP/1.1 " + STATUS_CODE[404] + "\r\n"
+        response_body = "<html><body><h1>File not found.</h1></body></html>"
+        c_length = len(response_body.encode(FORMAT))
+        headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+        respond(conn, status_line, headers, response_body)
+        return
+
+    headers: dict = parts[3]
+    if "If-Modified-Since" in headers.keys():
+        path = os.path.join(path, parts[1][1:])
+        timem = headers["If-Modified-Since"]
+        file_time = time.strftime("%a, %d %b %Y %I:%M:%S %Z",
+                                  time.gmtime(os.path.getmtime(path)))
+        if file_time < timem:
+            status_line = "HTTP/1.1 " + STATUS_CODE[304] + "\r\n"
+            response_body = "<html><body><h1>FIle has not been modified.</h1></body></html>"
+            c_length = len(response_body.encode(FORMAT))
+            headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+            respond(conn, status_line, headers, response_body)
+            return
+    length = os.path.getsize(path)
+    with open(path, "rb") as data:
+        all_bytes = data.read(length).decode()
+    status_line = "HTTP/1.1 " + STATUS_CODE[200] + "\r\n"
+    response_body = all_bytes
+    c_length = length
+    headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+    if head:
+        respond(conn, status_line, headers)
+    else:
+        respond(conn, status_line, headers, response_body)
+    return
 
 
 def handle_HEAD(parts, conn):
-    pass
+    handle_GET(parts, conn, True)
 
 
 def check_HOST(parts, conn):
@@ -123,7 +157,7 @@ def check_HOST(parts, conn):
 
 
 def respond(conn, status_line, headers, msg_body=""):
-    msg = status_line + "\r\n" + headers + "\r\n\r\n" + msg_body
+    msg = status_line + "\r\n" + headers + "\r\n\r\n" + str(msg_body) + "\r\n"
     conn.send(msg.encode(FORMAT))
     return
 
@@ -135,51 +169,27 @@ def get_PART(conn, size):
     return buffer
 
 
-def split_HEADER(msg):
-    # hier moet nog een big check komen
-    request = ''.join((line + '\n') for line in msg.splitlines())
-    request_head = request.splitlines()  # List of request and headers
-    request_line = request_head[0]
-    method, uri, http = request_line.split(' ', 3)
-    headers = {}
-    for head in request_head[1:len(request_head)-1]:
-        elem = head.split(": ", 1)
-        headers[elem[0]] = elem[1]
+def split_HEADER(msg, conn):
+    if msg == DISCONNECT_MSG:
+        conn.close()
+        return
+    try:
+        request = ''.join((line + '\n') for line in msg.splitlines())
+        request_head = request.splitlines()  # List of request and headers
+        request_line = request_head[0]
+        method, uri, http = request_line.split(' ', 3)
+        headers = {}
+        for head in request_head[1:len(request_head)-1]:
+            elem = head.split(": ", 1)
+            headers[elem[0]] = elem[1]
+    except:
+        stat_line = STATUS_CODE[500]
+        response_body = "<html><body><h1>500 INTERNAL SERVER ERROR</h1></body></html>"
+        c_length = len(response_body.encode(FORMAT))
+        headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+        respond(conn, stat_line, headers)
+        conn.close()
     return [method, uri, http, headers]
 
 
-if __name__ == "__main__":
-    main()
-
-
-# def handle_PUT(msg, conn):
-#     check_HOST_HEADER(msg, conn)
-#     msg_parts = handle_msg(msg, conn)
-#     path = os.path.dirname(os.path.abspath(__file__))
-#     file_name = msg_parts[1]
-#     with open(os.path.join(path, file_name), 'wb') as newfile:
-#         newfile.write(msg_parts[4].encode(FORMAT))
-#     status_line = "HTTP/1.1 " + STATUS_CODE[200] + "\r\n"
-#     response_body = "<html><body><h1>The file was created.</h1></body></html>"
-#     headers: str = "Date: " + TIME + "\r\n" + "Content type: " + "plain/text" + \
-#         + "\r\n" + "Content length: " + len(response_body.encode(FORMAT))
-#     send_RESPONSE(conn, status_line, headers, response_body)
-
-
-# def handle_POST(msg, conn):
-#     check_HOST_HEADER(msg, conn)
-
-
-# def check_HOST_HEADER(msg, conn):
-#     headers = handle_msg(msg, conn)[3]
-#     if 'Host' not in headers:
-#         status_line: str = STATUS_CODE[400]
-#         response_body = "<html><body><h1>No host header in request</h1></body></html>"
-#         header: str = "Date: " + TIME + "\r\n" + "Content type: " + "plain/text" + \
-#             + "\r\n" + "Content length: " + len(response_body.encode(FORMAT))
-#         send_RESPONSE(conn, status_line, header, response_body)
-
-
-# def send_RESPONSE(conn, status_line: str, headers: str, body: str = ""):
-#     msg = status_line + headers + "\r\n\r\n" + body
-#     conn.send(msg.encode(FORMAT))
+main()
