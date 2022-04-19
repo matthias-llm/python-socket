@@ -7,7 +7,7 @@ class Util:
 	end_of_header = "\r\n\r\n"
 	stop = "\r\n"
 
-	file_extensions = [".jpg", ".png", ".js", ".css", ".gif"]
+	file_extensions = [".jpg", ".png", ".js", ".css", ".gif", ".PNG", ".JPG"]
 	end_chars = ["\"", "\'", "(", "=", ")"]
 	
 	charset = "utf-8"

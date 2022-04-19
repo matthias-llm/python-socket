@@ -83,12 +83,12 @@ class ClientSocket:
 
 		self._response = self._util.get_header(self._soc)
 
-	def post(self, command:str, path:str, length:int):
-		self._request = command + " " + path + " HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n"
+	def post(self, command:str, path:str, length:int, message:str):
+		self._request = command + " " + path + " HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n" + message
 		self._soc.send(self._request.encode())
 
-	def put(self, command:str, path:str, length:int):
-		self._request = command + " " + path + " / HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n"
+	def put(self, command:str, path:str, length:int, message:str):
+		self._request = command + " " + path + " / HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n" + message
 		self._soc.send(self._request.encode())
 
 	def _req(self, command:str):
