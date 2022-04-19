@@ -1,19 +1,19 @@
-
-from builtins import print
-import os
-import time
-import socket
 import threading
+import socket
+import time
+import os
+from builtins import print
+path = os.path.dirname(os.path.abspath(__file__))
 
 IP = socket.gethostbyname(socket.gethostname())
-PORT = 5586
+PORT = 5588
 ADDR = (IP, PORT)
 SIZE = 1
 FORMAT = "utf-8"
 DISCONNECT_MSG = "DISCONNECT!"
 STATUS_CODE = {200: "200 OK", 404: "404 Not Found",
                400: "400 Bad Request", 500: "500 Server Error", 304: "304 Not Modified"}
-TIME = time.strftime("%a, %d %b %Y %I:%M:%S %Z", time.gmtime())
+TIME = time.strftime("%a, %d %b %Y %H:%M:%S %Z", time.gmtime())
 
 
 def main():
@@ -117,11 +117,13 @@ def handle_GET(parts, conn, head=False):
     if "If-Modified-Since" in headers.keys():
         path = os.path.join(path, parts[1][1:])
         timem = headers["If-Modified-Since"]
-        file_time = time.strftime("%a, %d %b %Y %I:%M:%S %Z",
+        file_time = time.strftime("%a, %d %b %Y %H:%M:%S %Z",
                                   time.gmtime(os.path.getmtime(path)))
+        print(file_time, timem)
+        print(file_time < timem)
         if file_time < timem:
             status_line = "HTTP/1.1 " + STATUS_CODE[304] + "\r\n"
-            response_body = "<html><body><h1>FIle has not been modified.</h1></body></html>"
+            response_body = "<html><body><h1>File has not been modified.</h1></body></html>"
             c_length = len(response_body.encode(FORMAT))
             headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
             respond(conn, status_line, headers, response_body)
