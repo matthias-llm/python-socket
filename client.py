@@ -83,25 +83,25 @@ class ClientSocket:
 
 		self._response = self._util.get_header(self._soc)
 
-	def post(self, command:str, path:str, length:int, message:str):
-		self._request = command + " " + path + " HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n" + message
+	def post(self, command:str, path:str):
+		message = input()
+		self._request = command + " " + path + " HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(len(message.encode('utf-8'))) + "\r\n\r\n" + message
 		self._soc.send(self._request.encode())
 
-	def put(self, command:str, path:str, length:int, message:str):
-		self._request = command + " " + path + " / HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(length) + "\r\n\r\n" + message
+	def put(self, command:str, path:str):
+		message = input()
+		self._request = command + " " + path + " / HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(len(message.encode('utf-8'))) + "\r\n\r\n" + message
 		self._soc.send(self._request.encode())
 
 	def _req(self, command:str):
-		length = 30
-
 		if command == "HEAD":
 			self.head(command)
 		elif command == "GET":
 			self.get(command)
 		elif command == "POST":
-			self.post(command, input(), length)
+			self.post(command, input())
 		elif command == "PUT":
-			self.put(command, input() , length)
+			self.put(command, input())
 
 	def __init__(self, command:str, uri:str, port:str):
 		self.input_commands(command, port)
@@ -115,6 +115,5 @@ class ClientSocket:
 
 		self._util.close_connection(self._soc)
 
-
-#client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
-client = ClientSocket("GET", sys.argv[2], "80")
+client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
+# client = ClientSocket("GET", sys.argv[2], "80")

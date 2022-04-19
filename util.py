@@ -17,7 +17,7 @@ class Util:
 		if uri[:3] == "www":
 			ip = socket.gethostbyname(uri)
 		elif uri == "localhost":
-			ip = "127.0.1.1"
+			ip = "127.0.0.1"
 		else:
 			ip = uri
 		

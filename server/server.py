@@ -6,7 +6,7 @@ from builtins import print
 path = os.path.dirname(os.path.abspath(__file__))
 
 IP = socket.gethostbyname(socket.gethostname())
-PORT = 5588
+PORT = 8000
 ADDR = (IP, PORT)
 SIZE = 1
 FORMAT = "utf-8"
