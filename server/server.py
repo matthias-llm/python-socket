@@ -131,6 +131,21 @@ def handle_GET(parts, conn, head=False):
             headers = f"DATE: {TIME}\r\nContent-Type: text/html\r\nContent-Length: {c_length}"
             respond(conn, status_line, headers, response_body)
             return
+    type = parts[1].split('.', 2)[1]
+    try:
+        if type != "html" or type != "txt":
+            content_type = f"image/{parts[1].split('.', 2)[1]}"
+        elif type == 'html':
+            content_type = "text/html"
+        elif type == 'txt':
+            content_type = "text/plain"
+    except:
+        stat_line = STATUS_CODE[500]
+        response_body = "<html><body><h1>500 INTERNAL SERVER ERROR</h1></body></html>"
+        c_length = len(response_body.encode(FORMAT))
+        headers = f"DATE: {TIME}\r\nContent-Type: text/plain\r\nContent-Length: {c_length}"
+        respond(conn, stat_line, headers)
+        conn.close()
     path = os.path.join(path, parts[1][1:])
     length = os.path.getsize(path)
     with open(path, "rb") as data:
@@ -138,7 +153,7 @@ def handle_GET(parts, conn, head=False):
     status_line = "HTTP/1.1 " + STATUS_CODE[200]
     response_body = all_bytes
     c_length = length
-    headers = f"DATE: {TIME}\r\nContent-Type: text/html\r\nContent-Length: {c_length}"
+    headers = f"DATE: {TIME}\r\nContent-Type: {content_type}\r\nContent-Length: {c_length}"
     if head:
         respond(conn, status_line, headers)
     else:
