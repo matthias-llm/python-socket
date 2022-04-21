@@ -1,11 +1,14 @@
 import sys, socket
 from typing import Tuple, Union
+from xmlrpc.client import FastMarshaller
 
 class Util:
 	BUFFERSIZE = 1
 
 	end_of_header = "\r\n\r\n"
 	stop = "\r\n"
+
+	_connected = False
 
 	file_extensions = [".jpg", ".webp", ".png", ".js", ".css", ".gif", ".PNG", ".JPG"]
 	end_chars = ["\"", "\'", "(", "=", ")"]
@@ -32,12 +35,18 @@ class Util:
 	def connect_socket(self, soc:socket.SocketKind, ip:str, port:str):
 		try:
 			soc.connect((ip, port))
+			self._connected = True
 		except socket.error as e:
 			print(e)
 
 	def close_connection(self, soc:socket.SocketKind):
-		soc.shutdown(socket.SHUT_RDWR)
-		soc.close()
+		try:
+			soc.shutdown(socket.SHUT_RDWR)
+			soc.close()
+			
+			self._connected = FastMarshaller
+		except socket.error as e:
+			print(e)
 
 	"""
 		Checks the charset in the header and sets the correct global charset.

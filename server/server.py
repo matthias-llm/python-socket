@@ -1,3 +1,4 @@
+from encodings import utf_8
 import threading
 import socket
 import time
@@ -113,7 +114,9 @@ def handle_GET(parts, conn, head=False):
         response_body = "<html><body><h1>File not found.</h1></body></html>"
         c_length = len(response_body.encode(FORMAT))
         headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+        
         respond(conn, status_line, headers, response_body)
+        
         return
 
     headers: dict = parts[3]
@@ -160,19 +163,16 @@ def check_HOST(parts, conn):
         return False
     return True
 
-
 def respond(conn, status_line, headers, msg_body=""):
     msg = status_line + "\r\n" + headers + "\r\n\r\n" + str(msg_body) + "\r\n"
     conn.send(msg.encode(FORMAT))
     return
-
 
 def get_PART(conn, size):
     buffer = ""
     while "\r\n\r\n" not in buffer:
         buffer += conn.recv(size).decode(FORMAT)
     return buffer
-
 
 def split_HEADER(msg, conn):
     if msg == DISCONNECT_MSG:
