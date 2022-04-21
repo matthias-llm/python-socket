@@ -7,7 +7,7 @@ from builtins import print
 path = os.path.dirname(os.path.abspath(__file__))
 
 IP = socket.gethostbyname(socket.gethostname())
-PORT = 8000
+PORT = 8085
 ADDR = (IP, PORT)
 SIZE = 1
 FORMAT = "utf-8"
@@ -105,18 +105,17 @@ def handle_GET(parts, conn, head=False):
     # https://nikhilroxtomar.medium.com/file-transfer-using-tcp-socket-in-python3-idiot-developer-c5cf3899819c
     path = os.path.dirname(os.path.abspath(__file__))
     dir_list = os.listdir(path)
-    # print(dir_list, ":DIRLIST", path, ":path", parts[1])
+    if parts[1][1:] == "":
+        parts[1] = "/index.html"
+        return handle_GET(parts, conn, head)
     if parts[1][1:] not in dir_list:
-        if parts[1][1:] == "":
-            parts[1] = "\index.html"
-            return handle_GET(parts, conn, head)
         status_line = "HTTP/1.1 " + STATUS_CODE[404] + "\r\n"
         response_body = "<html><body><h1>File not found.</h1></body></html>"
         c_length = len(response_body.encode(FORMAT))
         headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
-        
+
         respond(conn, status_line, headers, response_body)
-        
+
         return
 
     headers: dict = parts[3]
@@ -125,8 +124,6 @@ def handle_GET(parts, conn, head=False):
         timem = headers["If-Modified-Since"]
         file_time = time.strftime("%a, %d %b %Y %H:%M:%S %Z",
                                   time.gmtime(os.path.getmtime(path)))
-        print(file_time, timem)
-        print(file_time < timem)
         if file_time < timem:
             status_line = "HTTP/1.1 " + STATUS_CODE[304] + "\r\n"
             response_body = "<html><body><h1>File has not been modified.</h1></body></html>"
@@ -134,6 +131,7 @@ def handle_GET(parts, conn, head=False):
             headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
             respond(conn, status_line, headers, response_body)
             return
+    path = os.path.join(path, parts[1][1:])
     length = os.path.getsize(path)
     with open(path, "rb") as data:
         all_bytes = data.read(length).decode()
@@ -163,16 +161,19 @@ def check_HOST(parts, conn):
         return False
     return True
 
+
 def respond(conn, status_line, headers, msg_body=""):
     msg = status_line + "\r\n" + headers + "\r\n\r\n" + str(msg_body) + "\r\n"
     conn.send(msg.encode(FORMAT))
     return
+
 
 def get_PART(conn, size):
     buffer = ""
     while "\r\n\r\n" not in buffer:
         buffer += conn.recv(size).decode(FORMAT)
     return buffer
+
 
 def split_HEADER(msg, conn):
     if msg == DISCONNECT_MSG:
