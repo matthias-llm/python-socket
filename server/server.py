@@ -16,6 +16,8 @@ STATUS_CODE = {200: "200 OK", 404: "404 Not Found",
                400: "400 Bad Request", 500: "500 Server Error", 304: "304 Not Modified"}
 TIME = time.strftime("%a, %d %b %Y %H:%M:%S %Z", time.gmtime())
 
+# start up server and activate threading
+
 
 def main():
     print(f"[STARTING] {IP, PORT}")
@@ -30,6 +32,10 @@ def main():
         thread.start()
         print(f"[ACTIVE_CONNECTIONS] {threading.active_count()-1}")
 
+# first the header of the html message is retreived, and split into parts. afterwards a check to see if an additional body should still be retreived
+# based on the method. if so, the body will be added and the rest of the program works with 'parts' as an input
+# parts = [method, uri, http-version, headers(dictionnary), body]
+
 
 def handle_client(conn, addr):
     print(f"[NEW_CONNECTION] {addr} connected.")
@@ -37,6 +43,7 @@ def handle_client(conn, addr):
     while connected:
         header = get_PART(conn, SIZE)
         parts = split_HEADER(header, conn)
+        # Http requirement
         if check_HOST(parts, conn):
             if parts[0] == "PUT" or parts[0] == "POST":
                 length_next_chunk = int(parts[3]['Content-Length'])
@@ -45,6 +52,8 @@ def handle_client(conn, addr):
             redirect_msg(parts, conn)
     conn.close()
     print(f"[ACTIVE_CONNECTIONS] {threading.active_count()-2}")
+
+# redirects request according to the method
 
 
 def redirect_msg(parts, conn):
@@ -66,6 +75,8 @@ def redirect_msg(parts, conn):
         return
     return
 
+# first: retrieve the path to this directory, second: give the file the correct name and extention, third: write file with body and respond
+
 
 def handle_PUT(parts, conn):
     path = os.path.dirname(os.path.abspath(__file__))
@@ -79,6 +90,9 @@ def handle_PUT(parts, conn):
     headers = f"DATE: {TIME}\r\nContent-Type: text/plain\r\nContent-Length: {c_length}"
     respond(conn, status_line, headers, response_body)
     return
+
+# This function works a lot like the handle_PUT function, but first a little check wether or not the file already exists.
+# if not, handle put will be called, else, the body wil be appended in the correct file. Finally, respond.
 
 
 def handle_POST(parts, conn):
@@ -98,11 +112,15 @@ def handle_POST(parts, conn):
         respond(conn, status_line, headers, response_body)
     return
 
+#  first, retrieve the path to this directory, if / is requested, the function will restart with /index.html as a parameter
+# check if file exists in this directory
+# check If-Modified-Since header
+# configure correct content types --> only support for images, and text (html/txt)
+# if everything is ok, the request is granted.
+# a shortcut is made by the handleHEAD function, leaving the response body behind
+
 
 def handle_GET(parts, conn, head=False):
-    # eerst checken of uri al gekend is, anders 404, erna if modified since met terug files te checken
-    # als die twee in orde zijn moet ik nog aan die file zien te geraken
-    # https://nikhilroxtomar.medium.com/file-transfer-using-tcp-socket-in-python3-idiot-developer-c5cf3899819c
     path = os.path.dirname(os.path.abspath(__file__))
     dir_list = os.listdir(path)
     if parts[1][1:] == "":
@@ -164,6 +182,8 @@ def handle_GET(parts, conn, head=False):
 def handle_HEAD(parts, conn):
     handle_GET(parts, conn, True)
 
+# checks if the host header field is given in request
+
 
 def check_HOST(parts, conn):
     heads: dict = parts[3]
@@ -176,6 +196,8 @@ def check_HOST(parts, conn):
         return False
     return True
 
+# send response to client
+
 
 def respond(conn, status_line, headers, msg_body=""):
     msg = status_line + "\r\n" + headers + "\r\n\r\n"
@@ -183,12 +205,16 @@ def respond(conn, status_line, headers, msg_body=""):
     conn.send(msg)
     return
 
+# accept client input
+
 
 def get_PART(conn, size):
     buffer = ""
     while "\r\n\r\n" not in buffer:
         buffer += conn.recv(size).decode(FORMAT)
     return buffer
+
+# splits the request without the body in parts
 
 
 def split_HEADER(msg, conn):
