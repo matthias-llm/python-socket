@@ -112,6 +112,9 @@ def handle_GET(parts, conn, head=False):
         headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
         respond(conn, status_line, headers, response_body)
         return
+    elif parts[1][1:] == "":
+        parts[1] = "\index.html"
+        return handle_GET(parts, conn, head)
 
     headers: dict = parts[3]
     if "If-Modified-Since" in headers.keys():
