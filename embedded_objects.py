@@ -97,6 +97,9 @@ class EmbeddedObjects:
 						url = response[index] + url
 						index -= 1
 
+					if url[0] == ".":
+						url = url[1:]
+
 					filename = ""
 					
 					if url[:len("https://")] == "https://":
@@ -107,6 +110,7 @@ class EmbeddedObjects:
 						filename = self._get_object_external(counter, url[len("http://"):], uri)
 					elif url[0] == "/":
 						filename = self._get_object_normal(counter, url, uri, soc)
+						print(filename)
 					else:
 						break
 
@@ -116,14 +120,13 @@ class EmbeddedObjects:
 
 					break
 
-		print("test")
 		return reconstructed_response
 
 	"""
 		Retrieve header and body and write file to disk.
 	"""
 	def _get_object_normal(self, counter:str, url:str, uri:str, soc:socket.SocketKind) -> str:
-		request = "GET" + " /" + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
+		request = "GET" + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
 		soc.send(request.encode())
 
 		header = self._util.get_header(soc)

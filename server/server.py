@@ -134,7 +134,7 @@ def handle_GET(parts, conn, head=False):
     path = os.path.join(path, parts[1][1:])
     length = os.path.getsize(path)
     with open(path, "rb") as data:
-        all_bytes = data.read(length).decode()
+        all_bytes = data.read(length)
     status_line = "HTTP/1.1 " + STATUS_CODE[200]
     response_body = all_bytes
     c_length = length
@@ -163,9 +163,9 @@ def check_HOST(parts, conn):
 
 
 def respond(conn, status_line, headers, msg_body=""):
-    msg = status_line + "\r\n" + headers + "\r\n\r\n" + str(msg_body) + "\r\n"
-    print(msg)
-    conn.send(msg.encode(FORMAT))
+    msg = status_line + "\r\n" + headers + "\r\n\r\n"
+    msg = msg.encode(FORMAT) + msg_body + "\r\n".encode(FORMAT)
+    conn.send(msg)
     return
 
 

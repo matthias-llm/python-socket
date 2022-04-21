@@ -168,33 +168,32 @@ class ClientSocket:
 	"""
 	def __init__(self): #, command:str, uri:str, port:str):
 		print("Give a telnet command. The GET and HEAD function are constructed and sent automatically.\nDisconecting is done as follows: DISCONNECT! _ _\n\n")
-		command, uri, port = input().split(" ")
+		try:
+			command, uri, port = input().split(" ")
+		except ValueError as e:
+			print()
+
+		if command == "DISCONNECT!":
+			global connected
+			connected = False
+			
+			return
 
 		self.input_commands(command, port)
 		self._uri = uri
 		self._ip, self._soc = self._util.create_socket(self._uri)
 		self._util.connect_socket(self._soc, self._ip, self._port)
 
-		while self._util._connected == True:
-			self._req(self._command)
+		self._req(self._command)
 		
-			_ = self._util.write_output(uri, self._filetype_1, self._filetype_2, self._response)
+		_ = self._util.write_output(uri, self._filetype_1, self._filetype_2, self._response)
 
-			self._util.close_connection(self._soc)
-
-			try:
-				command, uri, port = input().split(" ")
-			except ValueError as e:
-				print()
-
-			if command == "DISCONNECT!":
-				break
-
-			self.input_commands(command, port)
-			self._uri = uri
-			self._ip, self._soc = self._util.create_socket(self._uri)
-			self._util.connect_socket(self._soc, self._ip, self._port)
+		self._util.close_connection(self._soc)
 
 # client = ClientSocket(sys.argv[1], sys.argv[2], sys.argv[3])
 # client = ClientSocket("GET", sys.argv[2], "80")
-client = ClientSocket()
+global connected
+connected = True
+
+while connected:
+	client = ClientSocket()

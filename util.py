@@ -8,8 +8,6 @@ class Util:
 	end_of_header = "\r\n\r\n"
 	stop = "\r\n"
 
-	_connected = False
-
 	file_extensions = [".jpg", ".webp", ".png", ".js", ".css", ".gif", ".PNG", ".JPG"]
 	end_chars = ["\"", "\'", "(", "=", ")"]
 	
@@ -35,7 +33,6 @@ class Util:
 	def connect_socket(self, soc:socket.SocketKind, ip:str, port:str):
 		try:
 			soc.connect((ip, port))
-			self._connected = True
 		except socket.error as e:
 			print(e)
 
@@ -43,8 +40,6 @@ class Util:
 		try:
 			soc.shutdown(socket.SHUT_RDWR)
 			soc.close()
-			
-			self._connected = FastMarshaller
 		except socket.error as e:
 			print(e)
 
