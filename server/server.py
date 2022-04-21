@@ -106,15 +106,15 @@ def handle_GET(parts, conn, head=False):
     dir_list = os.listdir(path)
     # print(dir_list, ":DIRLIST", path, ":path", parts[1])
     if parts[1][1:] not in dir_list:
+        if parts[1][1:] == "":
+            parts[1] = "\index.html"
+            return handle_GET(parts, conn, head)
         status_line = "HTTP/1.1 " + STATUS_CODE[404] + "\r\n"
         response_body = "<html><body><h1>File not found.</h1></body></html>"
         c_length = len(response_body.encode(FORMAT))
         headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
         respond(conn, status_line, headers, response_body)
         return
-    elif parts[1][1:] == "":
-        parts[1] = "\index.html"
-        return handle_GET(parts, conn, head)
 
     headers: dict = parts[3]
     if "If-Modified-Since" in headers.keys():
