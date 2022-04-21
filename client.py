@@ -129,7 +129,7 @@ class ClientSocket:
 		print("Input the content: ", end="")
 		message = input()
 
-		self._request = command + " " + path + " HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(len(message.encode('utf-8'))) + "\r\n\r\n" + message
+		self._request = command + " " + path + " HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(len(message.encode('utf-8'))) + "\r\n\r\n" + message + "\r\n\r\n" #dit hoort er eigenlijk niet bij
 		self._soc.send(self._request.encode())
 
 	"""
@@ -142,7 +142,7 @@ class ClientSocket:
 		print("Input the content: ", end="")
 		message = input()
 
-		self._request = command + " " + path + " / HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(len(message.encode('utf-8'))) + "\r\n\r\n" + message
+		self._request = command + " " + path + " HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(len(message.encode('utf-8'))) + "\r\n\r\n" + message + "\r\n\r\n"
 		self._soc.send(self._request.encode())
 
 	"""
@@ -156,10 +156,10 @@ class ClientSocket:
 		elif command == "GET":
 			self.get(command)
 		elif command == "POST":
-			print("Input the path: ")
+			print("Input the path: ", end="")
 			self.post(command, input())
 		elif command == "PUT":
-			print("Input the path: ")
+			print("Input the path: ", end="")
 			self.put(command, input())
 
 	"""

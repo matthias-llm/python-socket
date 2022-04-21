@@ -126,7 +126,7 @@ class EmbeddedObjects:
 		Retrieve header and body and write file to disk.
 	"""
 	def _get_object_normal(self, counter:str, url:str, uri:str, soc:socket.SocketKind) -> str:
-		request = "GET" + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
+		request = "GET " + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
 		soc.send(request.encode())
 
 		header = self._util.get_header(soc)
