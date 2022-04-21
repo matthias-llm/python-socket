@@ -8,6 +8,12 @@ class EmbeddedObjects:
 	_port = 80
 	_response = ""
 
+	"""
+		Constructs the uri.
+		Returns the uri and length of uri. Used later on for path on the server.
+
+		Public member
+	"""
 	def make_uri(self, url:str):
 		u = ""
 		index = 0
@@ -18,14 +24,24 @@ class EmbeddedObjects:
 	
 		return u, index
 
+	"""
+		Closes the socket safely.
+
+		Private member.
+	"""
 	def _close_connection(self, soc:socket.SocketKind):
-		soc.shutdown(socket.SHUT_RDWR)
-		soc.close()
+		try:
+			soc.shutdown(socket.SHUT_RDWR)
+			soc.close()
+		except socket.error as e:
+			print(e)
 
 	"""
 		Checks filetypes for filenameing purposes and file extensions.
 		";" and "\r" can both be a terminating substring in the header.
 		filetype is of form "abcd/abcd" with right what type of file it is.
+
+		Private member.
 	"""
 	def _check_file_type(self, header:str) -> Tuple[str,str]:
 		substr = "Content-Type: "
@@ -52,6 +68,8 @@ class EmbeddedObjects:
 	"""
 		Finds Content-length if not transferred in chuncks, returns -1 if chunked.
 		"\r" signals a line-end.
+
+		Private member.
 	"""
 	def _check_page_length(self, header:str) -> int:
 		substr_cl = "Content-Length: "
@@ -70,6 +88,12 @@ class EmbeddedObjects:
 
 			return int(length)
 
+	"""
+		Uses global variables, for easier use of the functions arguments.
+		Checks if the extension is in the current response, at the end.
+
+		Private member.
+	"""
 	def _has_object(self, extension:str, response:str, index:int) -> bool:
 		global extension_length, reconstructed_response
 
@@ -79,6 +103,12 @@ class EmbeddedObjects:
 
 		return False
 
+	"""
+		Searches through the whole body for the extensions in the extension list in Util class. 
+		https://, http://, // and / must be treated separately for connecting the socket.
+
+		Public member.
+	"""
 	def retrieve_embedded_objects(self, response:str, soc:socket.SocketKind, uri:str) -> str:
 		global extension_length, reconstructed_response
 
@@ -124,6 +154,8 @@ class EmbeddedObjects:
 
 	"""
 		Retrieve header and body and write file to disk.
+
+		Private member.
 	"""
 	def _get_object_normal(self, counter:str, url:str, uri:str, soc:socket.SocketKind) -> str:
 		request = "GET " + url + " HTTP/1.1\r\nHost: " + uri + "\r\n\r\n"
@@ -138,6 +170,8 @@ class EmbeddedObjects:
 
 	"""
 		Retrieve header and body and write file to disk.
+
+		Private member.
 	"""
 	def _get_object_external(self, counter:str, url:str, uri:str) -> str:
 		uri, i = self.make_uri(url)
@@ -161,7 +195,9 @@ class EmbeddedObjects:
 		return self._util.write_output(uri, filetype_1, filetype_2, obj, counter)
 
 	"""
-		Uses binary format for receiving and writing objects
+		Uses binary format for receiving and writing objects.
+
+		Private member.
 	"""
 	def _get_object(self, size:int, soc:socket.SocketKind) -> bytes:
 		obj = b""
@@ -174,6 +210,13 @@ class EmbeddedObjects:
 
 		return obj
 
+	"""
+		This definition has some internal functions for easier use and cleaner code.
+		Receives the data chuncked.
+		Does the same as _get_chunked() in client.py
+
+		Private member.
+	"""
 	def _get_chunked(self, soc:socket.SocketKind, obj:bytes) -> bytes:
 		def in_buffer(buffer:str) -> bool:
 			if len(buffer) > len(self._util.stop):

@@ -14,6 +14,11 @@ class Util:
 	charset = "utf-8"
 	filetype = ""
 
+	"""
+		Creates a socket, translates www-address or localhost to ip. Ip-address is also possible.
+
+		Public member.
+	"""
 	def create_socket(self, uri:str) -> Tuple[str, socket.SocketKind]:
 		if uri[:3] == "www":
 			ip = socket.gethostbyname(uri)
@@ -30,12 +35,22 @@ class Util:
 
 		return ip, soc
 
+	"""
+		Lets the socket connect to a ip and port.
+
+		Public member.
+	"""
 	def connect_socket(self, soc:socket.SocketKind, ip:str, port:str):
 		try:
 			soc.connect((ip, port))
 		except socket.error as e:
 			print(e)
 
+	"""
+		Closes the socket safely.
+
+		Public member.
+	"""
 	def close_connection(self, soc:socket.SocketKind):
 		try:
 			soc.shutdown(socket.SHUT_RDWR)
@@ -46,6 +61,8 @@ class Util:
 	"""
 		Checks the charset in the header and sets the correct global charset.
 		Standard charset is utf-8.
+
+		Public member.
 	"""
 	def check_charset(self, header:str):
 		substr = "charset="
@@ -66,6 +83,8 @@ class Util:
 
 	"""
 		Receive each byte seperately (self.BUFFERSIZE) until self.end_of_header is found in buffer.
+
+		Public member.
 	"""
 	def get_header(self, soc:socket.SocketKind) -> str:
 		buffer = ""
@@ -75,6 +94,11 @@ class Util:
 
 		return buffer
 
+	"""
+		Writes ouput to file with right extension extracted from HEAD-http response.
+
+		Public member.
+	"""
 	def write_output(self, uri:str, filetype_1:str, filetype_2:str, obj:Union[bytes, str], counter:str="") -> str:
 		if filetype_2 == "plain":
 			self.filetype = "txt"
@@ -96,6 +120,11 @@ class Util:
 
 		return filename
 
+	"""
+		Uses interal python function for replacing a string.
+
+		Public member.
+	"""
 	def replace_in_html(self, response:str, filename:str, url:str) -> str:
 		return response.replace(url, filename)
 
