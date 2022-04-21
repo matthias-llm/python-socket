@@ -94,6 +94,8 @@ class ClientSocket:
 		
 		header = self._util.get_header(self._soc)
 
+		print(header)
+
 		if header != "HTTP/1.1 404 Not Found\r\n\r\n":
 			self._util.check_charset(header)
 			chunk = self._embedded_obj._check_page_length(header)

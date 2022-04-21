@@ -61,7 +61,7 @@ def redirect_msg(parts, conn):
         stat_line = STATUS_CODE[400]
         response_body = "<html><body><h1>No valid request</h1></body></html>"
         c_length = len(response_body.encode(FORMAT))
-        headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+        headers = f"DATE: {TIME}\r\nContent-Type: plain/text\r\nContent-Length: {c_length}"
         respond(conn, stat_line, headers, response_body)
         return
     return
@@ -73,10 +73,10 @@ def handle_PUT(parts, conn):
     file_name = file_name.split('.', 2)[0]+".txt"
     with open(os.path.join(path, file_name), 'w') as newfile:
         newfile.write(parts[4])
-    status_line = "HTTP/1.1 " + STATUS_CODE[200] + "\r\n"
+    status_line = "HTTP/1.1 " + STATUS_CODE[200]
     response_body = "<html><body><h1>The file was created.</h1></body></html>"
     c_length = len(response_body.encode(FORMAT))
-    headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+    headers = f"DATE: {TIME}\r\nContent-Type: plain/text\r\nContent-Length: {c_length}"
     respond(conn, status_line, headers, response_body)
     return
 
@@ -91,10 +91,10 @@ def handle_POST(parts, conn):
     else:
         with open(os.path.join(path, file_name), 'a') as newfile:
             newfile.write(parts[4])
-        status_line = "HTTP/1.1 " + STATUS_CODE[200] + "\r\n"
+        status_line = "HTTP/1.1 " + STATUS_CODE[200]
         response_body = "<html><body><h1>the content was succesfully appended.</h1></body></html>"
         c_length = len(response_body.encode(FORMAT))
-        headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+        headers = f"DATE: {TIME}\r\nContent-Type: plain/text\r\nContent-Length: {c_length}"
         respond(conn, status_line, headers, response_body)
     return
 
@@ -104,16 +104,15 @@ def handle_GET(parts, conn, head=False):
     # als die twee in orde zijn moet ik nog aan die file zien te geraken
     # https://nikhilroxtomar.medium.com/file-transfer-using-tcp-socket-in-python3-idiot-developer-c5cf3899819c
     path = os.path.dirname(os.path.abspath(__file__))
-    print(path)
     dir_list = os.listdir(path)
     if parts[1][1:] == "":
         parts[1] = "/index.html"
         return handle_GET(parts, conn, head)
     if parts[1][1:] not in dir_list:
-        status_line = "HTTP/1.1 " + STATUS_CODE[404] + "\r\n"
+        status_line = "HTTP/1.1 " + STATUS_CODE[404]
         response_body = "<html><body><h1>File not found.</h1></body></html>"
         c_length = len(response_body.encode(FORMAT))
-        headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+        headers = f"DATE: {TIME}\r\nContent-Type: plain/html\r\nContent-Length: {c_length}"
 
         respond(conn, status_line, headers, response_body)
 
@@ -126,20 +125,20 @@ def handle_GET(parts, conn, head=False):
         file_time = time.strftime("%a, %d %b %Y %H:%M:%S %Z",
                                   time.gmtime(os.path.getmtime(path)))
         if file_time < timem:
-            status_line = "HTTP/1.1 " + STATUS_CODE[304] + "\r\n"
+            status_line = "HTTP/1.1 " + STATUS_CODE[304]
             response_body = "<html><body><h1>File has not been modified.</h1></body></html>"
             c_length = len(response_body.encode(FORMAT))
-            headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+            headers = f"DATE: {TIME}\r\nContent-Type: plain/html\r\nContent-Length: {c_length}"
             respond(conn, status_line, headers, response_body)
             return
     path = os.path.join(path, parts[1][1:])
     length = os.path.getsize(path)
     with open(path, "rb") as data:
         all_bytes = data.read(length).decode()
-    status_line = "HTTP/1.1 " + STATUS_CODE[200] + "\r\n"
+    status_line = "HTTP/1.1 " + STATUS_CODE[200]
     response_body = all_bytes
     c_length = length
-    headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+    headers = f"DATE: {TIME}\r\nContent-Type: plain/html\r\nContent-Length: {c_length}"
     if head:
         respond(conn, status_line, headers)
     else:
@@ -157,7 +156,7 @@ def check_HOST(parts, conn):
         stat_line = STATUS_CODE[400]
         response_body = "<html><body><h1>No host field given</h1></body></html>"
         c_length = len(response_body.encode(FORMAT))
-        headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+        headers = f"DATE: {TIME}\r\nContent-Type: plain/text\r\nContent-Length: {c_length}"
         respond(conn, stat_line, headers, response_body)
         return False
     return True
@@ -165,6 +164,7 @@ def check_HOST(parts, conn):
 
 def respond(conn, status_line, headers, msg_body=""):
     msg = status_line + "\r\n" + headers + "\r\n\r\n" + str(msg_body) + "\r\n"
+    print(msg)
     conn.send(msg.encode(FORMAT))
     return
 
@@ -193,7 +193,7 @@ def split_HEADER(msg, conn):
         stat_line = STATUS_CODE[500]
         response_body = "<html><body><h1>500 INTERNAL SERVER ERROR</h1></body></html>"
         c_length = len(response_body.encode(FORMAT))
-        headers = f"DATE: {TIME}\r\nContent type: plain/text\r\nContent length: {c_length}"
+        headers = f"DATE: {TIME}\r\nContent-Type: plain/text\r\nContent-Length: {c_length}"
         respond(conn, stat_line, headers)
         conn.close()
     return [method, uri, http, headers]
