@@ -104,6 +104,7 @@ def handle_GET(parts, conn, head=False):
     # als die twee in orde zijn moet ik nog aan die file zien te geraken
     # https://nikhilroxtomar.medium.com/file-transfer-using-tcp-socket-in-python3-idiot-developer-c5cf3899819c
     path = os.path.dirname(os.path.abspath(__file__))
+    print(path)
     dir_list = os.listdir(path)
     if parts[1][1:] == "":
         parts[1] = "/index.html"

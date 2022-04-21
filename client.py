@@ -124,7 +124,7 @@ class ClientSocket:
 		Public member.
 	"""
 	def post(self, command:str, path:str):
-		print("Input the content: ")
+		print("Input the content: ", end="")
 		message = input()
 
 		self._request = command + " " + path + " HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(len(message.encode('utf-8'))) + "\r\n\r\n" + message
@@ -137,7 +137,7 @@ class ClientSocket:
 		Public member.
 	"""
 	def put(self, command:str, path:str):
-		print("Input the content: ")
+		print("Input the content: ", end="")
 		message = input()
 
 		self._request = command + " " + path + " / HTTP/1.1\r\nHost: " + self._uri + "\r\n" + "Content-Length: " + str(len(message.encode('utf-8'))) + "\r\n\r\n" + message
